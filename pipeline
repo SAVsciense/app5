@@ -1,0 +1,126 @@
+pipeline {
+  environment {
+    KUBERNETES_API_URL = 'https://34.89.105.80'
+    PROJECT_ID = 'cicd-security-integration'
+    CLUSTER_NAME = 'cicd'
+    LOCATION = 'europe-west2-a'
+    CREDENTIALS_ID = 'gke'
+  }
+
+  agent {
+      kubernetes {
+        yaml '''
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            labels:
+              app: jenkins-nodejs
+          spec:
+            tolerations:
+            - key: "instance_type"
+              operator: "Exists"
+              effect: "NoSchedule"
+            nodeSelector:
+              cloud.google.com/gke-nodepool: "spot"
+            containers:
+              - name: trivy
+                image: aquasec/trivy:latest
+                imagePullPolicy: Always
+                command:
+                - sleep
+                args:
+                - 9999999
+              - name: kubectl
+                image: yonadev/jnlp-slave-k8s-helm:latest
+                imagePullPolicy: Always
+                command:
+                - sleep
+                args:
+                - 9999999
+            volumes:
+            - name: kaniko-secret
+              secret:
+                secretName: kaniko-secret
+            resources:
+              requests:
+                memory: "1024Mi"
+                cpu: "300m"
+              limits:
+                memory: "1024Mi"
+                cpu: "300m"
+  '''
+    }
+  }
+
+  stages {
+    stage('Cloning Git') {
+      steps {
+        git([url: 'https://github.com/digininja/DVWA', branch: 'master', credentialsId: 'd585d2e0-e8a7-4cc7-98ec-dce2446a53e9'])
+      }
+    }
+
+    stage ('OWASP Dependency-Check Vulnerabilities') {
+      steps {
+        container('jnlp') {
+          dependencyCheck additionalArguments: ''' 
+            -o "./" 
+            -s "./"
+            -f "ALL" 
+            --prettyPrint''', odcInstallation: 'dependency-check'
+
+          dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+        }
+      }
+    }
+  }
+}
+
+
+    
+    /* stage("trivy") { */
+    /*   steps { */
+    /*     container("trivy") { */
+    /*       sh 'mkdir -p reports' */
+    /*       sh 'trivy filesystem --format template --template "@html.tpl" -o reports/nodjs-scan.html ./' */
+          /* sh 'trivy image --format template --template "@html.tpl" -o reports/nodjs-scan.html bkimminich/juice-shop:latest' */
+    /**/
+    /*       publishHTML target : [ */
+    /*           allowMissing: true, */
+    /*           alwaysLinkToLastBuild: true, */
+    /*           keepAll: true, */
+    /*           reportDir: 'reports', */
+    /*           reportFiles: 'nodjs-scan.html', */
+    /*           reportName: 'Trivy Scan', */
+    /*           reportTitles: 'Trivy Scan' */
+    /*       ] */
+    /**/
+    /*       // Scan again and fail on CRITICAL vulns */
+    /*       sh 'trivy filesystem --scanners vuln --exit-code 1 --severity CRITICAL ./' */
+    /*     } */
+    /*   } */
+    /* } */
+
+    /* stage("Build image") { */
+    /*   steps { */
+    /*     container("kaniko") { */
+    /*       sh """ */
+    /*         /kaniko/executor --context `pwd` --destination "gcr.io/cicd-security-integration/app-test:${env.BUILD_ID}" --destination "gcr.io/cicd-security-integration/app-test:latest" */
+    /*       """ */
+    /*     } */
+    /*   } */
+    /* } */
+
+  /*   stage('Deploy to GKE') { */
+  /*     steps { */
+  /*     container("kubectl") { */
+  /*         withKubeConfig([credentialsId: env.CREDENTIALS_ID, serverUrl: env.KUBERNETES_API_URL, clusterName: env.CLUSTER_NAME]) { */
+  /*           sh 'kubectl apply -f deployment.yaml' */
+  /*         } */
+  /*       } */
+  /*     } */
+  /*   } */
+  /* } */
+/* } */
+
+
+
