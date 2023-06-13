@@ -55,7 +55,7 @@ pipeline {
   stages {
     stage('Cloning Git') {
       steps {
-        git([url: 'https://github.com/digininja/DVWA', branch: 'main', credentialsId: 'd585d2e0-e8a7-4cc7-98ec-dce2446a53e9'])
+        git([url: 'git@github.com:SAVsciense/app5.git', branch: 'main', credentialsId: 'd585d2e0-e8a7-4cc7-98ec-dce2446a53e9'])
       }
     }
 
